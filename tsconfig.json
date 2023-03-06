@@ -1,0 +1,11 @@
+{
+  "extends": "./configs/api.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": ["jest", "node", "@types/jest"],
+    "experimentalDecorators": true,
+  },
+  "include": ["src/", "test/"],
+  "exclude": ["node_modules", "uploads"]
+}
