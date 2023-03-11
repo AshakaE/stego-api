@@ -10,6 +10,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import Wiki from '../../Database/Entities/wiki.entity'
+import SearchService from './search.service'
 
 @ObjectType()
 class Link {
@@ -25,7 +26,7 @@ class SearchResult {
   link!: string
 }
 @ObjectType()
-class DeepSearchResult {
+export class DeepSearchResult {
   @Field(() => String)
   word!: string
 
@@ -56,6 +57,7 @@ class SearchResolver {
   constructor(
     @InjectRepository(Wiki)
     private wikisRepository: Repository<Wiki>,
+    private searchService: SearchService,
   ) {}
 
   @Query(() => [SearchResult])
@@ -125,12 +127,11 @@ class SearchResolver {
 
   @Query(() => DeepSearchResult, { nullable: true })
   async deepSearch(val: string) {
-    //split word
-    //word must have space inbetween and atleast 3 characters long
-    // val = 'coin frax bit'
+    const b = await this.searchService.deepSearch(val)
+    console.log(b)
     const words = val.split(' ')
-
-    const matches = words.map(async w => {
+    const validWords = words.filter(word => word.length >= 3)
+    const matches = validWords.map(async w => {
       let r
       try {
         r = await this.wikisRepository
@@ -146,7 +147,6 @@ class SearchResolver {
           )
           .getMany()
  
-
         const v = r.map(x => `https://iq.wiki/wiki/${x.id}`)
 
         return v
@@ -169,7 +169,7 @@ class SearchResolver {
 
 
     const v = { word: val, links: ag } as DeepSearchResult
-    console.log(v)
+    // console.log(v)
     return { word: val, links: ag } as unknown as DeepSearchResult
 
   }
