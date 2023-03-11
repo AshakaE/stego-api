@@ -13,7 +13,7 @@ import Wiki from '../../Database/Entities/wiki.entity'
 import SearchService from './search.service'
 
 @ObjectType()
-class Link {
+export class Link {
   @Field(() => String)
   link!: string
 }
@@ -127,7 +127,7 @@ class SearchResolver {
 
   @Query(() => DeepSearchResult, { nullable: true })
   async deepSearch(val: string) {
-    const b = await this.searchService.deepSearch(val)
+    const b = await this.searchService.findLinks(val)
     console.log(b)
     const words = val.split(' ')
     const validWords = words.filter(word => word.length >= 3)
