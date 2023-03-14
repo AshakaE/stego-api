@@ -10,8 +10,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import Wiki from '../../Database/Entities/wiki.entity'
-import Language from '../../Database/Entities/language.entity'
+import SearchService from './search.service'
 
+@ObjectType()
+export class Link {
+  @Field(() => String)
+  link!: string
+}
 @ObjectType()
 class SearchResult {
   @Field(() => String)
@@ -19,6 +24,14 @@ class SearchResult {
 
   @Field(() => String)
   link!: string
+}
+@ObjectType()
+export class DeepSearchResult {
+  @Field(() => String)
+  word!: string
+
+  @Field(() => [Link])
+  links!: [Link]
 }
 
 @ObjectType()
@@ -44,6 +57,7 @@ class SearchResolver {
   constructor(
     @InjectRepository(Wiki)
     private wikisRepository: Repository<Wiki>,
+    private searchService: SearchService,
   ) {}
 
   @Query(() => [SearchResult])
@@ -61,9 +75,8 @@ class SearchResolver {
     })
   }
 
-  @Query(() => [SearchResult], { nullable: true })
+  @Query(() => [DeepSearchResult], { nullable: true })
   async findWiki(@Args() args: ByIdArgs) {
-    console.log(args.id)
     const obj = [
       'Line Break Test',
       'frax price index fpi',
@@ -76,6 +89,7 @@ class SearchResolver {
       'Golem network',
       'network golem',
       'Not found',
+      'coin frax bit',
     ]
 
     const res = obj.map(async e => {
@@ -93,31 +107,71 @@ class SearchResolver {
             },
           )
           .getOne()
-        console.log(wikiLink)
-        // }
         if (!wikiLink) {
-          return {
-            word: e,
-            link: `NOT FOUND`,
-          } as SearchResult
+          //deep search
+          const a = await this.deepSearch(e)
+          return a
         }
         return {
           word: e,
-          link: `https://iq.wiki/wiki/${wikiLink.id}`,
-        } as SearchResult
+          links: [{ link: `https://iq.wiki/wiki/${wikiLink.id}` }],
+        } as DeepSearchResult
       } catch (e) {
         console.log(e)
       }
-      // if(wikiLink) {
+    })
+    const a = await Promise.all(res)
+    console.log(a)
+    return res
+  }
+
+  @Query(() => DeepSearchResult, { nullable: true })
+  async deepSearch(val: string) {
+    const b = await this.searchService.findLinks(val)
+    console.log(b)
+    const words = val.split(' ')
+    const validWords = words.filter(word => word.length >= 3)
+    const matches = validWords.map(async w => {
+      let r
+      try {
+        r = await this.wikisRepository
+          .createQueryBuilder('wiki')
+          .select('wiki.id')
+          .where(
+            'wiki.language = :lang AND LOWER(wiki.title) LIKE :title AND hidden = :hidden',
+            {
+              lang: 'en',
+              hidden: false,
+              title: `%${w.replace(/[\W_]+/g, '%').toLowerCase()}%`,
+            },
+          )
+          .getMany()
+ 
+        const v = r.map(x => `https://iq.wiki/wiki/${x.id}`)
+
+        return v
+      } catch (e) {
+        console.error(e)
+      }
+    })
+    const k = await Promise.all(matches)
+
+    const flattenArr = k.reduce((acc, val) => acc?.concat(val || []), [])
+
+    const duplicates = flattenArr?.filter(
+      (item, index) => flattenArr.indexOf(item) !== index,
+    )
+    const uniqueDuplicates = [...new Set(duplicates)]
+
+    const ag = uniqueDuplicates.map(r => {
+      return { link: r } as Link
     })
 
-    return res 
-    return this.wikisRepository.findOne({
-      where: {
-        // language: 'en',
-        id: args.id,
-      },
-    })
+
+    const v = { word: val, links: ag } as DeepSearchResult
+    // console.log(v)
+    return { word: val, links: ag } as unknown as DeepSearchResult
+
   }
 }
 

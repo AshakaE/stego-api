@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import DatabaseModule from '../Database/database.module'
 import Wiki from '../Database/Entities/wiki.entity'
 import SearchResolver from './Search/search.resolver'
+import SearchService from './Search/search.service'
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import SearchResolver from './Search/search.resolver'
     DatabaseModule,
   ],
   controllers: [],
-  providers: [SearchResolver],
+  providers: [SearchResolver, SearchService],
 })
 export class AppModule {}
