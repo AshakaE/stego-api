@@ -1,5 +1,5 @@
 # Database Search Engine & Wikify API
-# Description
+## Description
 
 This project covers two parts a simple db search engine for [wikis](https://iq.wiki) and a simple link builder for an array of possible [wikis](https://iq.wiki) string ids. It's intended to be used in conjunction with [wikis](https://iq.wiki) but the logic behind can be applied to your own personal project
 
