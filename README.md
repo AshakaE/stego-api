@@ -218,3 +218,9 @@ $ yarn run start:dev
 $ yarn run start:prod
 ```
 
+## Technologies used
+
+```txt
+PostgreSQL
+GraphQL
+```
