@@ -1,11 +1,11 @@
 # Database Search Engine & Wikify API
 ## Description
 
-This project covers two parts a simple db search engine for [wikis](https://iq.wiki) and a simple link builder for an array of possible [wikis](https://iq.wiki) string ids. It's intended to be used in conjunction with [wikis](https://iq.wiki) but the logic behind can be applied to your own personal project
+This project covers two parts a simple db search engine for [wikis](https://iq.wiki) and a simple link builder for an array of possible [wiki](https://iq.wiki) string ids. It's intended to be used in conjunction with [IQ Wiki](https://iq.wiki) but the logic behind can be applied to your own personal projects.
 
 
 DB search engine: 
-A user can search for [wiki](https://iq.wiki) without having the correct order of words or id. Under the hood it queries for each word and intersects the common values amongst the result to form a final result of wikis that have at least one word existing in each wiki id
+A user can search for [wiki](https://iq.wiki)'s without having the correct order of words or id. Under the hood it queries for each word and intersects the common values amongst the result to form a final result of wikis that have at least one word existing in each wiki id
 
 #### `Example query` :
 
@@ -60,7 +60,7 @@ query searchWikis($queryString: String!) {
 }
 ```
 
-Wikify (Link builder): The idea behind this is to speed up the process of citing [wikis](https://iq.wiki) when creating wikis. When writing wikis, an editor has the option of highlighting all words or string of words that they intend to cite from [wikis](https://iq.wiki), the api expects an array of strings and performs a db search like the one above, but the result is a array of objects with each and their respective wiki links.
+Wikify (Link builder): The idea behind this is to speed up the process of citing [wikis](https://iq.wiki) when creating wikis. When writing wikis, an editor has the option of highlighting all words or string of words that they intend to cite from [IQ Wiki](https://iq.wiki), the api expects an array of strings and performs a db search like the one above, but the result is a array of objects with each word(s) and their respective wiki link(s).
 
 ### `Example query` :
 
