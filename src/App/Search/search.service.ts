@@ -12,14 +12,6 @@ export class Link {
   @Field(() => String, { nullable: true })
   link!: string
 }
-@ObjectType()
-class SearchResult {
-  @Field(() => String)
-  word!: string
-
-  @Field(() => String)
-  link!: string
-}
 
 const options = {
   includeScore: true,
