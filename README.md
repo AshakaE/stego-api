@@ -1,30 +1,203 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Database Search Engine & Wikify API
+# Description
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This project covers two parts a simple db search engine for [wikis](https://iq.wiki) and a simple link builder for an array of possible [wikis](https://iq.wiki) string ids. It's intended to be used in conjunction with [wikis](https://iq.wiki) but the logic behind can be applied to your own personal project
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+DB search engine: 
+A user can search for [wiki](https://iq.wiki) without having the correct order of words or id. Under the hood it queries for each word and intersects the common values amongst the result to form a final result of wikis that have at least one word existing in each wiki id
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+#### `Example query` :
+
+`query args`
+```json
+{
+   "queryString": " coin frax bit bi"
+}
+```
+`query` 
+```js
+query searchWikis($queryString: String!) {
+  searchWikis(queryString: $queryString) {
+    id
+    categories {
+      id
+    }
+  }
+}
+```
+`query result` 
+```json
+{
+  "data": {
+    "searchWikis": [
+      {
+        "id": "frax-stablecoin",
+        "categories": [
+          {
+            "id": "cryptocurrencies"
+          }
+        ]
+      },
+      {
+        "id": "bitcoin-diamond",
+        "categories": [
+          {
+            "id": "cryptocurrencies"
+          }
+        ]
+      },
+      {
+        "id": "wrapped-bitcoin-wbtc",
+        "categories": [
+          {
+            "id": "cryptocurrencies"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Wikify (Link builder): The idea behind this is to speed up the process of citing [wikis](https://iq.wiki) when creating wikis. When writing wikis, an editor has the option of highlighting all words or string of words that they intend to cite from [wikis](https://iq.wiki), the api expects an array of strings and performs a db search like the one above, but the result is a array of objects with each and their respective wiki links.
+
+### `Example query` :
+
+`query args`
+```json
+{
+    {
+        "queryObject": ["usD Binance", "Line Break Test", "frax price index fpi", "blockchain", "3Landers NFT", "Frax Share", "Kevin Wang", "summary of the wiki", "Suchet Dhindsa Salvesen", "Golem network", "network golem", "Not found", "coin frax bit" ]
+    }
+}
+```
+`query` 
+```js
+query findLinks($queryObject: [String!]!) {
+  findLinks(queryObject: $queryObject) {
+    word
+    links {
+      link
+    }
+  }
+}
+```
+`query result` 
+```json
+{
+  "data": {
+    "findLinks": [
+      {
+        "word": "usD Binance",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/busd"
+          }
+        ]
+      },
+      {
+        "word": "Line Break Test",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/line-break-test"
+          }
+        ]
+      },
+      {
+        "word": "frax price index fpi",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/frax-price-index-fpi"
+          }
+        ]
+      },
+      {
+        "word": "blockchain",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/blockchain"
+          }
+        ]
+      },
+      {
+        "word": "3Landers NFT",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/3landers-nft"
+          }
+        ]
+      },
+      {
+        "word": "Frax Share",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/frax-share"
+          }
+        ]
+      },
+      {
+        "word": "Kevin Wang",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/kevin-wang"
+          }
+        ]
+      },
+      {
+        "word": "summary of the wiki",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/summary-of-the-wiki"
+          }
+        ]
+      },
+      {
+        "word": "Suchet Dhindsa Salvesen",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/suchet-dhindsa-salvesen"
+          }
+        ]
+      },
+      {
+        "word": "Golem network",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/golem-network"
+          }
+        ]
+      },
+      {
+        "word": "network golem",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/golem-network"
+          }
+        ]
+      },
+      {
+        "word": "Not found",
+        "links": []
+      },
+      {
+        "word": "coin frax bit",
+        "links": [
+          {
+            "link": "https://iq.wiki/wiki/frax-stablecoin"
+          },
+          {
+            "link": "https://iq.wiki/wiki/bitcoin-diamond"
+          },
+          {
+            "link": "https://iq.wiki/wiki/wrapped-bitcoin-wbtc"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## Installation
 
@@ -45,29 +218,3 @@ $ yarn run start:dev
 $ yarn run start:prod
 ```
 
-## Test
-
-```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
-```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).

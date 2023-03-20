@@ -3,175 +3,36 @@ import {
   Field,
   ObjectType,
   Query,
-  ArgsType,
-  GraphQLISODateTime,
   Args,
 } from '@nestjs/graphql'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
 import Wiki from '../../Database/Entities/wiki.entity'
-import SearchService from './search.service'
+import SearchService, { Link } from './search.service'
 
-@ObjectType()
-export class Link {
-  @Field(() => String)
-  link!: string
-}
-@ObjectType()
-class SearchResult {
-  @Field(() => String)
-  word!: string
-
-  @Field(() => String)
-  link!: string
-}
 @ObjectType()
 export class DeepSearchResult {
   @Field(() => String)
   word!: string
 
-  @Field(() => [Link])
+  @Field(() => [Link], { nullable: true })
   links!: [Link]
 }
 
-@ObjectType()
-class WikiC {
-  @Field(() => String)
-  id!: string
-
-  @Field(() => GraphQLISODateTime)
-  updated!: Date
-}
-
-@ArgsType()
-export class ByIdArgs {
-  @Field(() => String)
-  id!: string
-
-  @Field(() => String)
-  lang = 'en'
-}
-
-@Resolver(() => SearchResult)
+@Resolver(() => DeepSearchResult)
 class SearchResolver {
-  constructor(
-    @InjectRepository(Wiki)
-    private wikisRepository: Repository<Wiki>,
-    private searchService: SearchService,
-  ) {}
-
-  @Query(() => [SearchResult])
-  async searchWiki() {
-    return [{ word: 'About bitcoin', link: 'https://iq.wiki/wiki/bitcoin' }]
-  }
-
-  @Query(() => [WikiC], { nullable: true })
-  async wikisIds() {
-    return this.wikisRepository.find({
-      select: ['id', 'updated'],
-      where: {
-        hidden: false,
-      },
-    })
-  }
+  constructor(private searchService: SearchService) {}
 
   @Query(() => [DeepSearchResult], { nullable: true })
-  async findWiki(@Args() args: ByIdArgs) {
-    const obj = [
-      'Line Break Test',
-      'frax price index fpi',
-      'blockchain',
-      '3Landers NFT',
-      'Frax Share',
-      'Kevin Wang',
-      'summary of the wiki',
-      'Suchet Dhindsa Salvesen',
-      'Golem network',
-      'network golem',
-      'Not found',
-      'coin frax bit',
-    ]
-
-    const res = obj.map(async e => {
-      let wikiLink
-      try {
-        wikiLink = await this.wikisRepository
-          .createQueryBuilder('wiki')
-          .select('wiki.id')
-          .where(
-            'wiki.language = :lang AND LOWER(wiki.title) LIKE :title AND hidden = :hidden',
-            {
-              lang: 'en',
-              hidden: false,
-              title: `%${e.replace(/[\W_]+/g, '%').toLowerCase()}%`,
-            },
-          )
-          .getOne()
-        if (!wikiLink) {
-          //deep search
-          const a = await this.deepSearch(e)
-          return a
-        }
-        return {
-          word: e,
-          links: [{ link: `https://iq.wiki/wiki/${wikiLink.id}` }],
-        } as DeepSearchResult
-      } catch (e) {
-        console.log(e)
-      }
-    })
-    const a = await Promise.all(res)
-    console.log(a)
-    return res
+  async findLinks(
+    @Args('queryObject', { type: () => [String] }) queryObject: string[],
+  ) {
+    return this.searchService.wikify(queryObject)
   }
 
-  @Query(() => DeepSearchResult, { nullable: true })
-  async deepSearch(val: string) {
-    const b = await this.searchService.findLinks(val)
-    console.log(b)
-    const words = val.split(' ')
-    const validWords = words.filter(word => word.length >= 3)
-    const matches = validWords.map(async w => {
-      let r
-      try {
-        r = await this.wikisRepository
-          .createQueryBuilder('wiki')
-          .select('wiki.id')
-          .where(
-            'wiki.language = :lang AND LOWER(wiki.title) LIKE :title AND hidden = :hidden',
-            {
-              lang: 'en',
-              hidden: false,
-              title: `%${w.replace(/[\W_]+/g, '%').toLowerCase()}%`,
-            },
-          )
-          .getMany()
- 
-        const v = r.map(x => `https://iq.wiki/wiki/${x.id}`)
-
-        return v
-      } catch (e) {
-        console.error(e)
-      }
-    })
-    const k = await Promise.all(matches)
-
-    const flattenArr = k.reduce((acc, val) => acc?.concat(val || []), [])
-
-    const duplicates = flattenArr?.filter(
-      (item, index) => flattenArr.indexOf(item) !== index,
-    )
-    const uniqueDuplicates = [...new Set(duplicates)]
-
-    const ag = uniqueDuplicates.map(r => {
-      return { link: r } as Link
-    })
-
-
-    const v = { word: val, links: ag } as DeepSearchResult
-    // console.log(v)
-    return { word: val, links: ag } as unknown as DeepSearchResult
-
+  @Query(() => [Wiki], { nullable: true })
+  async searchWikis(
+    @Args('queryString', { type: () => String }) queryString: string,
+  ) {
+    return this.searchService.searchWikis(queryString)
   }
 }
 

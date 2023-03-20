@@ -39,10 +39,9 @@ export default class TypeOrmConfig {
         PageviewsPerDay,
         ContentFeedback,
       ],
-      synchronize: true, // TODO: false in prod
+      synchronize: true,
       keepConnectionAlive: true,
       cache: true,
-      //   logging: true,
     }
   }
 }
