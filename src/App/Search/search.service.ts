@@ -40,11 +40,9 @@ class SearchService {
     return this.configService.get('WEBSITE_URL')
   }
 
-  async findWiki(query: string): Promise<Wiki[]> {
-    return this.wikisRepository
+  async findWiki(query: string, fullWiki: boolean): Promise<Wiki[]> {
+    const queryBuilder = this.wikisRepository
       .createQueryBuilder('wiki')
-      .select('wiki.id')
-      .addSelect('wiki.title')
       .where(
         'wiki.language = :lang AND LOWER(wiki.title) LIKE :title AND hidden = :hidden',
         {
@@ -53,14 +51,19 @@ class SearchService {
           title: `%${query.replace(/[\W_]+/g, '%').toLowerCase()}%`,
         },
       )
-      .getMany()
+
+    const result = fullWiki
+      ? await queryBuilder.getMany()
+      : await queryBuilder.select('wiki.id').addSelect('wiki.title').getMany()
+
+    return result
   }
 
   async wikify(queryObject: string[]): Promise<DeepSearchResult> {
     const res = queryObject.map(async e => {
       let wikiLink
       try {
-        wikiLink = await this.findWiki(e)
+        wikiLink = await this.findWiki(e, false)
         if (!wikiLink.length) {
           const links = await this.findLinks(e)
           return this.builder(e, wikiLink, links)
@@ -73,24 +76,51 @@ class SearchService {
     return Promise.all(res) as unknown as DeepSearchResult
   }
 
-  async deepSearch(queryString: string): Promise<[[string]]> {
-    const words = queryString.split(' ')
-    const validWords = words.filter(word => word.length >= 3)
+  async deepSearch(
+    queryString: string,
+    fullWiki: boolean,
+  ): Promise<[[Wiki]] | [[string]]> {
+    const words = queryString.trim().split(' ')
+    const validWords = words.filter(word => word.length > 2)
     const matches = validWords.map(async word => {
       let wiki
       try {
-        wiki = await this.findWiki(word)
-        const v = wiki.map(x => x.id)
-        return v
+        wiki = await this.findWiki(word, fullWiki)
+        const ids = wiki.map(x => x.id)
+        return fullWiki ? wiki : ids
       } catch (e) {
         console.error(e)
       }
     })
-
-    return (await Promise.all(matches)) as [[string]]
+    return fullWiki
+      ? ((await Promise.all(matches)) as [[Wiki]])
+      : ((await Promise.all(matches)) as [[string]])
   }
 
-  async uniqueIds(value: string[][]): Promise<string[]> {
+  async intersectWikis(value: Wiki[][]): Promise<Wiki[]> {
+    const flattenArr = value.reduce((acc, val) => acc?.concat(val || []), [])
+
+    const duplicates = flattenArr.filter((item, index, arr) => {
+      for (let i = 0; i < arr.length; i++) {
+        if (i != index && arr[i].id == item.id) {
+          return true
+        }
+      }
+      return false
+    })
+    console.log(duplicates)
+    const deduplicated = [
+      ...duplicates
+        .reduce((map, wiki) => {
+          return map.set(`${wiki.id}`, wiki)
+        }, new Map())
+        .values(),
+    ]
+    console.log(deduplicated)
+    return deduplicated
+  }
+
+  async intersectIds(value: string[][]): Promise<string[]> {
     const flattenArr = value.reduce((acc, val) => acc?.concat(val || []), [])
 
     const duplicates = flattenArr?.filter(
@@ -100,12 +130,11 @@ class SearchService {
   }
 
   async findLinks(value: string) {
-    const search = await this.deepSearch(value)
-    const ids = await this.uniqueIds(search)
-    const d = ids.map(id => {
+    const search = await this.deepSearch(value, false)
+    const ids = await this.intersectIds(search as string[][])
+    return ids.map(id => {
       return { link: `${this.url()}/wiki/${id}` }
     })
-    return d
   }
 
   async builder(
@@ -127,6 +156,12 @@ class SearchService {
       word,
       links,
     } as DeepSearchResult
+  }
+
+  async searchWikis(query: string): Promise<Wiki[]> {
+    const search = await this.deepSearch(query, true)
+    const wikis = await this.intersectWikis(search as Wiki[][])
+    return wikis
   }
 }
 export default SearchService

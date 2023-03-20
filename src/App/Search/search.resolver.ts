@@ -5,6 +5,7 @@ import {
   Query,
   Args,
 } from '@nestjs/graphql'
+import Wiki from '../../Database/Entities/wiki.entity'
 import SearchService, { Link } from './search.service'
 
 @ObjectType()
@@ -25,6 +26,13 @@ class SearchResolver {
     @Args('queryObject', { type: () => [String] }) queryObject: string[],
   ) {
     return this.searchService.wikify(queryObject)
+  }
+
+  @Query(() => [Wiki], { nullable: true })
+  async searchWikis(
+    @Args('queryString', { type: () => String }) queryString: string,
+  ) {
+    return this.searchService.searchWikis(queryString)
   }
 }
 
