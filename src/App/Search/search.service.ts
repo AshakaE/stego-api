@@ -129,7 +129,7 @@ class SearchService {
     return [...new Set(duplicates)]
   }
 
-  async findLinks(value: string) {
+  async findLinks(value: string): Promise<Link[]> {
     const search = await this.deepSearch(value, false)
     const ids = await this.intersectIds(search as string[][])
     return ids.map(id => {
