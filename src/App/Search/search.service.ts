@@ -1,9 +1,32 @@
+import { DeepSearchResult } from './search.resolver'
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import Wiki from '../../Database/Entities/wiki.entity'
-import { DeepSearchResult, Link } from './search.resolver'
+import Fuse from 'fuse.js'
+import { ObjectType, Field } from '@nestjs/graphql'
+
+@ObjectType()
+export class Link {
+  @Field(() => String, { nullable: true })
+  link!: string
+}
+@ObjectType()
+class SearchResult {
+  @Field(() => String)
+  word!: string
+
+  @Field(() => String)
+  link!: string
+}
+
+const options = {
+  includeScore: true,
+  includeMatches: true,
+  distance: 20,
+  keys: ['title'],
+}
 
 @Injectable()
 class SearchService {
@@ -13,7 +36,11 @@ class SearchService {
     private configService: ConfigService,
   ) {}
 
-  async findWikis(query: string): Promise<Wiki[]> {
+  private url() {
+    return this.configService.get('WEBSITE_URL')
+  }
+
+  async findWiki(query: string): Promise<Wiki[]> {
     return this.wikisRepository
       .createQueryBuilder('wiki')
       .select('wiki.id')
@@ -29,13 +56,30 @@ class SearchService {
       .getMany()
   }
 
+  async wikify(queryObject: string[]): Promise<DeepSearchResult> {
+    const res = queryObject.map(async e => {
+      let wikiLink
+      try {
+        wikiLink = await this.findWiki(e)
+        if (!wikiLink.length) {
+          const links = await this.findLinks(e)
+          return this.builder(e, wikiLink, links)
+        }
+        return this.builder(e, wikiLink)
+      } catch (e) {
+        console.log(e)
+      }
+    })
+    return Promise.all(res) as unknown as DeepSearchResult
+  }
+
   async deepSearch(queryString: string): Promise<[[string]]> {
     const words = queryString.split(' ')
     const validWords = words.filter(word => word.length >= 3)
     const matches = validWords.map(async word => {
       let wiki
       try {
-        wiki = await this.findWikis(word)
+        wiki = await this.findWiki(word)
         const v = wiki.map(x => x.id)
         return v
       } catch (e) {
@@ -56,28 +100,33 @@ class SearchService {
   }
 
   async findLinks(value: string) {
-    const url = this.configService.get('WEBSITE_URL')
     const search = await this.deepSearch(value)
     const ids = await this.uniqueIds(search)
-    console.log(search)
     const d = ids.map(id => {
-      return { link: `${url}/wiki/${id}` }
+      return { link: `${this.url()}/wiki/${id}` }
     })
     return d
   }
 
-  async searchWikis(queryString: string): Promise<[Wiki]> {
-    const search = await this.deepSearch(queryString)
-    const ids = await this.uniqueIds(search)
-    const wikis = ids.map(w => {
-      return this.wikisRepository.findOne({
-        where: {
-          id: w,
-          hidden: false,
-        },
-      })
-    })
-    return Promise.all(wikis) as unknown as [Wiki]
+  async builder(
+    word: string,
+    wiki: Wiki[],
+    links?: Link[],
+  ): Promise<DeepSearchResult> {
+    if (!links) {
+      const fuse = new Fuse(wiki, options)
+      const result = fuse.search(word)
+      return {
+        word,
+        links: result.length
+          ? [{ link: `${this.url()}/wiki/${result[0].item.id}` }]
+          : [],
+      } as DeepSearchResult
+    }
+    return {
+      word,
+      links,
+    } as DeepSearchResult
   }
 }
 export default SearchService
