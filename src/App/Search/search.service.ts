@@ -62,7 +62,7 @@ class SearchService {
         }
         return this.builder(e, wikiLink)
       } catch (e) {
-        console.log(e)
+        console.error(e)
       }
     })
     return Promise.all(res) as unknown as DeepSearchResult
@@ -100,7 +100,7 @@ class SearchService {
       }
       return false
     })
-    console.log(duplicates)
+
     const deduplicated = [
       ...duplicates
         .reduce((map, wiki) => {
@@ -108,7 +108,7 @@ class SearchService {
         }, new Map())
         .values(),
     ]
-    console.log(deduplicated)
+
     return deduplicated
   }
 
